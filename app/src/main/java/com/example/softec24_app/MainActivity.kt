@@ -13,6 +13,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,7 +22,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.AlertDialogDefaults.containerColor
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -49,6 +52,7 @@ import com.example.softec24_app.ui.theme.Softec24_APPTheme
 import com.google.firebase.auth.FirebaseAuth
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.firebase.Firebase
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.auth
 import com.google.firebase.initialize
 
@@ -73,6 +77,9 @@ class MainActivity : ComponentActivity() {
                 }
                 var isSuccess by remember { mutableStateOf(false) }
                 var isFailed by remember { mutableStateOf(false) }
+                var isFailedSignup by remember { mutableStateOf(false) }
+                var isSignupOK by remember { mutableStateOf(false) }
+
                 if (isLoginScreen) {
                     Log.d("inside:","Inside isLoginSuccess.")
 
@@ -101,15 +108,19 @@ class MainActivity : ComponentActivity() {
                             // Navigate to the next screen or perform other actions
                             Log.d("Successful","Signup Successfully")
                             isSuccess = true
+                            isSignupOK=true
                         },
                         onSignUpFailed = {
                             // Code to execute when signup fails
                             Log.d("UnSuccessful","Signup UnSuccessfully")
-
+                            isFailedSignup=true
                         }
                     )
+
                 }
                 if (isSuccess) {
+                    Toast.makeText(LocalContext.current,"Welcome", Toast.LENGTH_LONG).show()
+
                     Box(
                         modifier = Modifier
                             .background(MaterialTheme.colorScheme.background)
@@ -122,6 +133,15 @@ class MainActivity : ComponentActivity() {
                 if(isFailed)
                 {
                     Toast.makeText(LocalContext.current,"Login Unsuccessful", Toast.LENGTH_LONG).show()
+                }
+                if(isSignupOK)
+                {
+                    Toast.makeText(LocalContext.current,"SignUp Successful", Toast.LENGTH_LONG).show()
+                }
+
+                if(isFailedSignup)
+                {
+                    Toast.makeText(LocalContext.current,"SignUp Unsuccessful", Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -171,6 +191,16 @@ fun SignUpScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Image(
+            painter = painterResource(id = R.drawable.up),
+            contentDescription = "signup Image",
+            modifier = Modifier
+                .size(250.dp)
+                .clip(CircleShape)
+                .background(Color.White)
+                .align(Alignment.CenterHorizontally)
+                .padding(bottom = 16.dp)
+        )
         OutlinedTextField(
             value = email,
             onValueChange = { email = it },
@@ -260,7 +290,9 @@ fun SignUpScreen(
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
+                .height(56.dp),
+            colors = ButtonDefaults.buttonColors(Color(0xFFF05845))
+
         ) {
             Text(text = "Sign Up")
         }
@@ -285,15 +317,17 @@ fun LoginScreen(auth: FirebaseAuth, onSuccess: () -> Unit,
     ) {
 
         Image(
-            painter = painterResource(id = R.drawable.lock),
+            painter = painterResource(id = R.drawable.`in`),
             contentDescription = "Contact Image",
             modifier = Modifier
-                .size(150.dp)
+                .size(250.dp)
                 .clip(CircleShape)
-                .background(Color.Gray)
+                // Remove background modifier
+                 .background(Color.White)
                 .align(Alignment.CenterHorizontally)
                 .padding(bottom = 16.dp)
         )
+
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -340,13 +374,27 @@ fun LoginScreen(auth: FirebaseAuth, onSuccess: () -> Unit,
 
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
+                .height(56.dp),
+            colors = ButtonDefaults.buttonColors(Color(0xFFF05845))
+
         ) {
 
             Text(text = "login",)
         }
-        TextButton(onClick = onSignUpClick) {
-            Text(text = "Click here to Sign Up")
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Click here to",
+                color = Color.Black // Set the text color for "Click here to"
+            )
+            TextButton(
+                onClick = onSignUpClick,
+//                colors = ButtonDefaults.textButtonColors(contentColor = Color.White) // Set the text color for the TextButton
+            ) {
+                Text(
+                    text = "Sign Up",
+                    color = Color(0xFFF05845) // Set the text color for "Sign Up"
+                )
+            }
         }
     }
 }
