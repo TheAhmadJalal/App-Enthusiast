@@ -1,5 +1,6 @@
 package com.example.softec24_app
 
+import Model.User
 import android.os.Bundle
 import android.util.Log
 import android.widget.Toast
@@ -54,7 +55,10 @@ import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.auth
+import com.google.firebase.database.database
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.initialize
+import java.util.Random
 
 class MainActivity : ComponentActivity() {
     private val auth by  lazy{
@@ -62,6 +66,8 @@ class MainActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val firestore = FirebaseFirestore.getInstance()
+
         setContent {
             Softec24_APPTheme(dynamicColor = false) {
                 val isSystemInDarkMode = isSystemInDarkTheme()
@@ -79,6 +85,7 @@ class MainActivity : ComponentActivity() {
                 var isFailed by remember { mutableStateOf(false) }
                 var isFailedSignup by remember { mutableStateOf(false) }
                 var isSignupOK by remember { mutableStateOf(false) }
+//                val navController = rememberNavController()
 
                 if (isLoginScreen) {
                     Log.d("inside:","Inside isLoginSuccess.")
@@ -89,6 +96,7 @@ class MainActivity : ComponentActivity() {
                             // Code to execute when login is successful
                             isSuccess = true
                             isFailed = false
+
                         },
                         onFailed = {
                             // Code to execute when login fails
@@ -100,24 +108,33 @@ class MainActivity : ComponentActivity() {
                             isSignUpScreen=true
                         }
                     )
-                } else if(isSignUpScreen){
+                } else if (isSignUpScreen) {
                     SignUpScreen(
                         auth = auth,
+                        firestore = firestore, // Pass the firestore instance
                         onSignUpSuccess = {
                             // Code to execute when signup is successful
                             // Navigate to the next screen or perform other actions
-                            Log.d("Successful","Signup Successfully")
+                            Log.d("Successful", "Signup Successfully")
                             isSuccess = true
-                            isSignupOK=true
+                            isSignupOK = true
+//                            finish()
                         },
                         onSignUpFailed = {
                             // Code to execute when signup fails
-                            Log.d("UnSuccessful","Signup UnSuccessfully")
-                            isFailedSignup=true
+                            Log.d("UnSuccessful", "Signup UnSuccessfully")
+                            isFailedSignup = true
                         }
                     )
-
                 }
+
+                if(isSignupOK)
+                {
+//                    isLoginScreen=true
+
+                    Toast.makeText(LocalContext.current,"SignUp Successful", Toast.LENGTH_LONG).show()
+                }
+
                 if (isSuccess) {
                     Toast.makeText(LocalContext.current,"Welcome", Toast.LENGTH_LONG).show()
 
@@ -127,6 +144,8 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                     ) {
                         PersonsList()
+//                        isLoginScreen=true
+
                     }
                 }
 
@@ -134,11 +153,6 @@ class MainActivity : ComponentActivity() {
                 {
                     Toast.makeText(LocalContext.current,"Login Unsuccessful", Toast.LENGTH_LONG).show()
                 }
-                if(isSignupOK)
-                {
-                    Toast.makeText(LocalContext.current,"SignUp Successful", Toast.LENGTH_LONG).show()
-                }
-
                 if(isFailedSignup)
                 {
                     Toast.makeText(LocalContext.current,"SignUp Unsuccessful", Toast.LENGTH_LONG).show()
@@ -146,7 +160,13 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+    override fun onRestart() {
+        super.onRestart()
+        finish()
+        startActivity(getIntent());
+    }
 }
+
 @Composable
 fun PersonsList() {
     val persons = listOf(
@@ -174,15 +194,16 @@ fun PersonsList() {
 @Composable
 fun SignUpScreen(
     auth: FirebaseAuth,
+    firestore: FirebaseFirestore,
     onSignUpSuccess: () -> Unit,
-    onSignUpFailed: () -> Unit
+    onSignUpFailed: () -> Unit,
 ) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var firstName by remember { mutableStateOf("") }
     var lastName by remember { mutableStateOf("") }
-    var gender by remember { mutableStateOf("") }
-    val genderOptions = listOf("Male", "Female", "Other")
+    var UserType by remember { mutableStateOf("") }
+    val genderOptions = listOf("Select User Type","Fitness Professional", "Fitness Enthusiast")
 
     Column(
         modifier = Modifier
@@ -247,7 +268,7 @@ fun SignUpScreen(
             var selectedIndex by remember { mutableStateOf(0) }
 
             Text(
-                text = "Gender: ${genderOptions[selectedIndex]}",
+                text = "User Type: ${genderOptions[selectedIndex]}",
                 modifier = Modifier
                     .fillMaxSize()
                     .clickable { expanded = true }
@@ -263,7 +284,7 @@ fun SignUpScreen(
                     DropdownMenuItem(
                         onClick = {
                             selectedIndex = index
-                            gender = option
+                            UserType = option
                             expanded = false
                         },text = {
                             Text(
@@ -281,8 +302,34 @@ fun SignUpScreen(
                 auth.createUserWithEmailAndPassword(email, password)
                     .addOnCompleteListener { task ->
                         if (task.isSuccessful) {
-                            // Save additional user information to Firebase here if needed
-                            onSignUpSuccess()
+                            // Store user data in Firestore
+                            val user = hashMapOf(
+                                "Email" to email,
+                                "FirstName" to firstName,
+                                "LastName" to lastName,
+                                "UserType" to UserType
+                            )
+
+                            firestore.collection("userProfiles")
+                                .add(user) // Firestore generates a unique document ID
+                                .addOnSuccessListener { documentReference ->
+                                    // Send verification email
+                                    auth.currentUser?.sendEmailVerification()
+                                        ?.addOnCompleteListener { verificationTask ->
+                                            if (verificationTask.isSuccessful) {
+                                                // Verification email sent successfully
+                                                onSignUpSuccess()
+                                            } else {
+                                                // Failed to send verification email
+                                                Log.e("SignUpScreen", "Error sending verification email", verificationTask.exception)
+                                                onSignUpFailed()
+                                            }
+                                        }
+                                }
+                                .addOnFailureListener { e ->
+                                    Log.e("SignUpScreen", "Error writing document", e)
+                                    onSignUpFailed()
+                                }
                         } else {
                             onSignUpFailed()
                         }
@@ -292,8 +339,7 @@ fun SignUpScreen(
                 .fillMaxWidth()
                 .height(56.dp),
             colors = ButtonDefaults.buttonColors(Color(0xFFF05845))
-
-        ) {
+        )  {
             Text(text = "Sign Up")
         }
     }
