@@ -55,7 +55,7 @@ import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.firebase.Firebase
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.auth
-import com.google.firebase.database.database
+//import com.google.firebase.database.database
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.initialize
 import java.util.Random
